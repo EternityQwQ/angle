@@ -49,23 +49,19 @@ jobs:
       - name: Patch vulkan-loader for iOS (MoltenVK-only)
         run: |
           set -e
-          LOADER=third_party/vulkan-loader/src/loader/loader.c
-          test -f "$LOADER"
           # Khronos loader only defines these on Linux; on iOS they are dead
           # code (ANGLE dlopens MoltenVK directly), just needs to compile.
-          python3 - "$LOADER" <<'EOF'
-          import sys
-          p = sys.argv[1]
-          s = open(p).read()
+          # loader.c passed, settings.c fails next with the same macros.
+          python3 - <<'EOF'
+          import glob
           guard = '#ifndef FALLBACK_CONFIG_DIRS\n#define FALLBACK_CONFIG_DIRS "/etc/xdg"\n#endif\n#ifndef FALLBACK_DATA_DIRS\n#define FALLBACK_DATA_DIRS "/usr/local/share:/usr/share"\n#endif\n#ifndef SYSCONFDIR\n#define SYSCONFDIR "/etc"\n#endif\n'
-          if 'ifndef FALLBACK_CONFIG_DIRS' not in s:
-              s = guard + s
-              open(p, 'w').write(s)
-              print('patched', p)
-          else:
-              print('already patched')
+          for p in glob.glob('third_party/vulkan-loader/src/loader/*.c'):
+              s = open(p).read()
+              if 'ifndef FALLBACK_CONFIG_DIRS' not in s:
+                  open(p, 'w').write(guard + s)
+                  print('patched', p)
           EOF
-          grep -n "FALLBACK_CONFIG_DIRS\|FALLBACK_DATA_DIRS\|define SYSCONFDIR" "$LOADER" | head
+          grep -rn "ifndef FALLBACK_CONFIG_DIRS" third_party/vulkan-loader/src/loader/ | head
 
       - name: GN gen iOS device arm64 (Vulkan-only, Metal disabled)
         run: |
