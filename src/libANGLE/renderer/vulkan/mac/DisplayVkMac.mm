@@ -11,7 +11,9 @@
 
 #include <vulkan/vulkan.h>
 
-#include "libANGLE/renderer/vulkan/mac/IOSurfaceSurfaceVkMac.h"
+#if TARGET_OS_OSX
+#    include "libANGLE/renderer/vulkan/mac/IOSurfaceSurfaceVkMac.h"
+#endif
 #include "libANGLE/renderer/vulkan/mac/WindowSurfaceVkMac.h"
 #include "libANGLE/renderer/vulkan/vk_caps_utils.h"
 #include "libANGLE/renderer/vulkan/vk_renderer.h"
@@ -48,9 +50,15 @@ SurfaceImpl *DisplayVkMac::createPbufferFromClientBuffer(const egl::SurfaceState
                                                          EGLClientBuffer clientBuffer,
                                                          const egl::AttributeMap &attribs)
 {
+#if TARGET_OS_OSX
     ASSERT(buftype == EGL_IOSURFACE_ANGLE);
 
     return new IOSurfaceSurfaceVkMac(state, clientBuffer, attribs, mRenderer);
+#else
+    // IOSurface client buffers are macOS-only (headers private on iOS).
+    UNREACHABLE();
+    return nullptr;
+#endif
 }
 
 egl::ConfigSet DisplayVkMac::generateConfigs()
@@ -82,7 +90,9 @@ DisplayImpl *CreateVulkanMacDisplay(const egl::DisplayState &state)
 
 void DisplayVkMac::generateExtensions(egl::DisplayExtensions *outExtensions) const
 {
+#if TARGET_OS_OSX
     outExtensions->iosurfaceClientBuffer = true;
+#endif
 
     DisplayVk::generateExtensions(outExtensions);
 }
@@ -92,6 +102,7 @@ egl::Error DisplayVkMac::validateClientBuffer(const egl::Config *configuration,
                                               EGLClientBuffer clientBuffer,
                                               const egl::AttributeMap &attribs) const
 {
+#if TARGET_OS_OSX
     ASSERT(buftype == EGL_IOSURFACE_ANGLE);
 
     if (!IOSurfaceSurfaceVkMac::ValidateAttributes(this, clientBuffer, attribs))
@@ -99,6 +110,10 @@ egl::Error DisplayVkMac::validateClientBuffer(const egl::Config *configuration,
         return egl::Error(EGL_BAD_ATTRIBUTE);
     }
     return egl::NoError();
+#else
+    // IOSurface client buffers are macOS-only (headers private on iOS).
+    return egl::Error(EGL_BAD_ATTRIBUTE);
+#endif
 }
 
 }  // namespace rx

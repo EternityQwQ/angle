@@ -227,13 +227,20 @@ if (is_fuchsia) {
 # MoltenVK-only iOS device build: reuse the Mac display (Metal surface WSI)
 # on iOS too. WindowSurfaceVkMac only needs Metal/CAMetalLayer (iOS-ready);
 # see DisplayVkMac.mm Cocoa import shim below.
+# IOSurface headers are private on the iPhoneOS SDK, so IOSurfaceSurface
+# stays macOS-only; iOS keeps window/pbuffer surfaces via Metal.
 if (is_apple) {
   vulkan_backend_sources += [
     "mac/DisplayVkMac.h",
     "mac/DisplayVkMac.mm",
-    "mac/IOSurfaceSurfaceVkMac.h",
-    "mac/IOSurfaceSurfaceVkMac.mm",
     "mac/WindowSurfaceVkMac.h",
     "mac/WindowSurfaceVkMac.mm",
+  ]
+}
+
+if (is_mac) {
+  vulkan_backend_sources += [
+    "mac/IOSurfaceSurfaceVkMac.h",
+    "mac/IOSurfaceSurfaceVkMac.mm",
   ]
 }
