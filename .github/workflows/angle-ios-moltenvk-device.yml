@@ -69,19 +69,22 @@ jobs:
           tar xf mvk.tar
           ls -R MoltenVK.xcframework | head -n 30
 
-      - name: Package XCFrameworks
+      - name: Package frameworks
         run: |
-          xcodebuild -create-xcframework -framework out/ios-device/libEGL.framework -output libEGL.xcframework
-          xcodebuild -create-xcframework -framework out/ios-device/libGLESv2.framework -output libGLESv2.xcframework
+          rm -rf package/device && mkdir -p package/device
+          cp -R out/ios-device/libEGL.framework package/device/
+          cp -R out/ios-device/libGLESv2.framework package/device/
           mkdir -p package/include
           cp -R include/EGL include/GLES2 include/GLES3 include/KHR package/include/
-          ls -lh | grep -E "xcframework|package"
+          ls -lh package/device/
+          lipo -info package/device/libEGL.framework/libEGL
+          lipo -info package/device/libGLESv2.framework/libGLESv2
 
       - uses: actions/upload-artifact@v4
         with:
           name: angle-ios-device-moltenvk
           path: |
-            libEGL.xcframework
-            libGLESv2.xcframework
+            package/device/libEGL.framework
+            package/device/libGLESv2.framework
             package/include/
             MoltenVK.xcframework
