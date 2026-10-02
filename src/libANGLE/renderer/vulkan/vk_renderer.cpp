@@ -5418,6 +5418,17 @@ gl::Version Renderer::getMaxSupportedESVersion() const
         maxVersion = LimitVersionTo(maxVersion, {0, 0});
     }
 
+#if defined(ANGLE_PLATFORM_APPLE)
+    // MoltenVK-only iOS device build policy: never downgrade below ES 3.0.
+    // A 0.0 version still means "unusable device" and is preserved; any 2.x
+    // fallback (current or future gates) is raised to 3.0 so callers never
+    // silently get an ES 2.0 context on Apple hardware.
+    if (maxVersion >= gl::Version(2, 0) && maxVersion < gl::Version(3, 0))
+    {
+        maxVersion = gl::Version(3, 0);
+    }
+#endif
+
     return maxVersion;
 }
 
