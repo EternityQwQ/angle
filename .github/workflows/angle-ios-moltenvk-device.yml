@@ -49,7 +49,7 @@ jobs:
         run: |
           export PATH="$PWD/../depot_tools:$PATH"
           # gni/angle.gni 已强制: metal=false, vulkan含is_ios，这里再显式覆盖一次防回退
-          gn gen out/ios-device --args='target_os="ios" target_cpu="arm64" target_environment="device" is_debug=false is_component_build=false ios_enable_code_signing=false ios_deployment_target="16.0" angle_enable_metal=false angle_enable_vulkan=true angle_enable_gl=false angle_enable_null=false angle_enable_wgpu=false angle_enable_msl=false is_official_build=true chrome_pgo_phase=0 symbol_level=0'
+          gn gen out/ios-device --args='target_os="ios" target_cpu="arm64" target_environment="device" is_debug=false is_component_build=false ios_enable_code_signing=false ios_deployment_target="16.0" angle_enable_metal=false angle_enable_vulkan=true angle_enable_gl=false angle_enable_null=false angle_enable_wgpu=false angle_enable_msl=false angle_enable_swiftshader=false angle_enable_vulkan_validation_layers=false angle_enable_vulkan_api_dump_layer=false is_official_build=true chrome_pgo_phase=0 symbol_level=0'
           gn args out/ios-device --list | grep -E "target_|angle_enable_vulkan|angle_enable_metal" || true
 
       - name: Build libEGL libGLESv2
