@@ -74,11 +74,22 @@ jobs:
           rm -rf package/device && mkdir -p package/device
           cp -R out/ios-device/libEGL.framework package/device/
           cp -R out/ios-device/libGLESv2.framework package/device/
+          # Extract iOS device MoltenVK.framework from xcframework (ios-arm64 slice)
+          ls MoltenVK.xcframework/
+          if [ -d "MoltenVK.xcframework/ios-arm64/MoltenVK.framework" ]; then
+            cp -R MoltenVK.xcframework/ios-arm64/MoltenVK.framework package/device/
+          else
+            MVK_FW=$(find MoltenVK.xcframework -maxdepth 2 -type d -name "MoltenVK.framework" | grep -v -i simulator | head -n 1)
+            echo "fallback MoltenVK slice: $MVK_FW"
+            test -n "$MVK_FW"
+            cp -R "$MVK_FW" package/device/
+          fi
           mkdir -p package/include
           cp -R include/EGL include/GLES2 include/GLES3 include/KHR package/include/
           ls -lh package/device/
           lipo -info package/device/libEGL.framework/libEGL
           lipo -info package/device/libGLESv2.framework/libGLESv2
+          lipo -info package/device/MoltenVK.framework/MoltenVK
 
       - uses: actions/upload-artifact@v4
         with:
@@ -86,5 +97,5 @@ jobs:
           path: |
             package/device/libEGL.framework
             package/device/libGLESv2.framework
+            package/device/MoltenVK.framework
             package/include/
-            MoltenVK.xcframework
