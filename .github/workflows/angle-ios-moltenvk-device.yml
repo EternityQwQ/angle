@@ -62,6 +62,19 @@ jobs:
                   print('patched', p)
           EOF
           grep -rn "ifndef FALLBACK_CONFIG_DIRS" third_party/vulkan-loader/src/loader/ | head
+          # vulkan-loader links CoreFoundation only for is_mac; iOS (is_ios)
+          # needs the same Apple frameworks or SOLINK fails with undefined
+          # CFRelease/CFBundle* symbols. Promote is_mac to is_apple in its GN.
+          grep -rln "CoreFoundation" third_party/vulkan-loader/src/ | head
+          python3 - <<'EOF'
+          import glob, re
+          for p in glob.glob('third_party/vulkan-loader/src/**/*.gn', recursive=True):
+              s = open(p).read()
+              if 'CoreFoundation' in s and 'is_mac' in s:
+                  s2 = s.replace('is_mac', 'is_apple')
+                  open(p, 'w').write(s2)
+                  print('patched gn', p)
+          EOF
 
       - name: GN gen iOS device arm64 (Vulkan-only, Metal disabled)
         run: |
