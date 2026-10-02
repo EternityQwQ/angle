@@ -66,6 +66,14 @@ angle::Result WindowSurfaceVkMac::getCurrentWindowSize(vk::ErrorContext *context
 {
     ANGLE_VK_CHECK(context, (mMetalLayer != nullptr), VK_ERROR_INITIALIZATION_FAILED);
 
+#if !TARGET_OS_OSX
+    // Manual autoresizing follow (iOS has no kCALayerWidthSizable): keep the
+    // Metal layer sized to its host layer before measuring.
+    CALayer *hostLayer = reinterpret_cast<CALayer *>(mNativeWindowType);
+    mMetalLayer.frame =
+        CGRectMake(0, 0, hostLayer.bounds.size.width, hostLayer.bounds.size.height);
+#endif
+
     mMetalLayer.drawableSize =
         CGSizeMake(mMetalLayer.bounds.size.width * mMetalLayer.contentsScale,
                    mMetalLayer.bounds.size.height * mMetalLayer.contentsScale);
