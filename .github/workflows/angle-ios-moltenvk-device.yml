@@ -1,0 +1,87 @@
+name: angle-ios-moltenvk-device
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'gni/angle.gni'
+      - '.github/workflows/angle-ios-moltenvk-device.yml'
+  workflow_dispatch:
+    inputs:
+      moltenvk_tag:
+        description: 'MoltenVK release tag'
+        default: 'v1.3.0'
+        required: false
+
+jobs:
+  build-ios-device:
+    runs-on: macos-15
+    timeout-minutes: 120
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup depot_tools + gclient sync
+        run: |
+          set -e
+          git clone --depth 1 https://chromium.googlesource.com/chromium/tools/depot_tools.git ../depot_tools
+          export PATH="$PWD/../depot_tools:$PATH"
+          echo "$PWD/../depot_tools" >> $GITHUB_PATH
+          cat > .gclient <<'EOF'
+          solutions = [
+            {
+              "name": ".",
+              "url": "https://chromium.googlesource.com/angle/angle",
+              "deps_file": "DEPS",
+              "managed": False,
+            },
+          ]
+          EOF
+          gclient sync --no-history --noprehooks
+          gn --version
+          ninja --version || autoninja --version
+
+      - name: GN gen iOS device arm64 (Vulkan-only, Metal disabled)
+        run: |
+          export PATH="$PWD/../depot_tools:$PATH"
+          # gni/angle.gni 已强制: metal=false, vulkan含is_ios，这里再显式覆盖一次防回退
+          gn gen out/ios-device --args='target_os="ios" target_cpu="arm64" target_environment="device" is_debug=false is_component_build=false ios_enable_code_signing=false ios_deployment_target="16.0" angle_enable_metal=false angle_enable_vulkan=true angle_enable_gl=false angle_enable_null=false angle_enable_wgpu=false angle_enable_msl=false is_official_build=true chrome_pgo_phase=0 symbol_level=0'
+          gn args out/ios-device --list | grep -E "target_|angle_enable_vulkan|angle_enable_metal" || true
+
+      - name: Build libEGL libGLESv2
+        run: |
+          export PATH="$PWD/../depot_tools:$PATH"
+          autoninja -C out/ios-device libEGL libGLESv2
+          ls -lh out/ios-device/*.framework
+          lipo -info out/ios-device/libEGL.framework/libEGL
+          lipo -info out/ios-device/libGLESv2.framework/libGLESv2
+
+      - name: Fetch MoltenVK xcframework
+        run: |
+          TAG="${{ inputs.moltenvk_tag }}"
+          if [ -z "$TAG" ]; then TAG="v1.3.0"; fi
+          echo "MoltenVK tag=$TAG"
+          curl -L -o mvk.tar "https://github.com/KhronosGroup/MoltenVK/releases/download/${TAG}/MoltenVK.xcframework.tar"
+          tar xf mvk.tar
+          ls -R MoltenVK.xcframework | head -n 30
+
+      - name: Package XCFrameworks
+        run: |
+          xcodebuild -create-xcframework -framework out/ios-device/libEGL.framework -output libEGL.xcframework
+          xcodebuild -create-xcframework -framework out/ios-device/libGLESv2.framework -output libGLESv2.xcframework
+          mkdir -p package/include
+          cp -R include/EGL include/GLES2 include/GLES3 include/KHR package/include/
+          ls -lh | grep -E "xcframework|package"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: angle-ios-device-moltenvk
+          path: |
+            libEGL.xcframework
+            libGLESv2.xcframework
+            package/include/
+            MoltenVK.xcframework
