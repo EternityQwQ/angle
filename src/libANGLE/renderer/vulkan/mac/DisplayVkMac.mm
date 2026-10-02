@@ -16,7 +16,14 @@
 #include "libANGLE/renderer/vulkan/vk_caps_utils.h"
 #include "libANGLE/renderer/vulkan/vk_renderer.h"
 
-#import <Cocoa/Cocoa.h>
+// MoltenVK-only iOS device build: Cocoa is macOS-only; CALayer comes from
+// QuartzCore on both platforms.
+#if TARGET_OS_OSX
+#    import <Cocoa/Cocoa.h>
+#else
+#    import <Foundation/Foundation.h>
+#    import <QuartzCore/CALayer.h>
+#endif
 
 namespace rx
 {

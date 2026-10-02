@@ -6,6 +6,7 @@ on:
     paths:
       - 'gni/angle.gni'
       - 'src/common/vulkan/**'
+      - 'src/libANGLE/renderer/vulkan/**'
       - '.github/workflows/angle-ios-moltenvk-device.yml'
   workflow_dispatch:
     inputs:
