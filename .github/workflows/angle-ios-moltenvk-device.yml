@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'gni/angle.gni'
+      - 'src/common/vulkan/**'
       - '.github/workflows/angle-ios-moltenvk-device.yml'
   workflow_dispatch:
     inputs:
@@ -44,6 +45,27 @@ jobs:
           gclient sync --no-history --noprehooks
           gn --version
           ninja --version || autoninja --version
+
+      - name: Patch vulkan-loader for iOS (MoltenVK-only)
+        run: |
+          set -e
+          LOADER=third_party/vulkan-loader/src/loader/loader.c
+          test -f "$LOADER"
+          # Khronos loader only defines these on Linux; on iOS they are dead
+          # code (ANGLE dlopens MoltenVK directly), just needs to compile.
+          python3 - "$LOADER" <<'EOF'
+          import sys
+          p = sys.argv[1]
+          s = open(p).read()
+          guard = '#ifndef FALLBACK_CONFIG_DIRS\n#define FALLBACK_CONFIG_DIRS "/etc/xdg"\n#endif\n#ifndef FALLBACK_DATA_DIRS\n#define FALLBACK_DATA_DIRS "/usr/local/share:/usr/share"\n#endif\n#ifndef SYSCONFDIR\n#define SYSCONFDIR "/etc"\n#endif\n'
+          if 'ifndef FALLBACK_CONFIG_DIRS' not in s:
+              s = guard + s
+              open(p, 'w').write(s)
+              print('patched', p)
+          else:
+              print('already patched')
+          EOF
+          grep -n "FALLBACK_CONFIG_DIRS\|FALLBACK_DATA_DIRS\|define SYSCONFDIR" "$LOADER" | head
 
       - name: GN gen iOS device arm64 (Vulkan-only, Metal disabled)
         run: |
