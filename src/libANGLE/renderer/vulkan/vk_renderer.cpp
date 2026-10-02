@@ -5344,11 +5344,19 @@ gl::Version Renderer::getMaxSupportedESVersion() const
 
     // Limit to ES2.0 if there are any blockers for 3.0.
 
+#if !defined(ANGLE_PLATFORM_APPLE)
     // VK_EXT_provoking_vertex is required for flat shading.
     if (!mFeatures.provokingVertex.enabled)
     {
         maxVersion = LimitVersionTo(maxVersion, {2, 0});
     }
+#else
+    // MoltenVK-only iOS device build: MoltenVK builds without Metal private
+    // API do not expose VK_EXT_provoking_vertex, which would cap us to ES 2.0
+    // above. Deliberately report ES 3.1 anyway; `flat`-qualified varyings then
+    // resolve per MoltenVK's convention instead of the spec's. Non-conformant
+    // corner, but the only viable path to ES 3.1 on stock MoltenVK.
+#endif
 
     // Multisample textures (ES3.1) and multisample renderbuffers (ES3.0) require the Vulkan driver
     // to support the standard sample locations (in order to pass dEQP tests that check these

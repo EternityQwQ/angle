@@ -155,3 +155,7 @@ TestResults.qpa
 
 # Any temporary files will confuse code generation.
 !scripts/code_generation_hashes/*
+
+# Local crash diagnostics (never commit)
+hs_err_pid*.log
+latestlog*.txt

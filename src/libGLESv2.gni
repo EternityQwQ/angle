@@ -678,7 +678,10 @@ if (angle_enable_explicit_context) {
   ]
 }
 
-libglesv2_sources = [ "src/libGLESv2/libGLESv2_autogen.cpp" ]
+libglesv2_sources = [
+  "src/libGLESv2/desktop_gl_shims.cpp",
+  "src/libGLESv2/libGLESv2_autogen.cpp",
+]
 
 libglesv2_cl_sources = [
   "src/libGLESv2/cl_dispatch_table.cpp",

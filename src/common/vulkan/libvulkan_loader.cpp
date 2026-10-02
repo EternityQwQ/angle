@@ -25,6 +25,9 @@ void *OpenLibVulkan()
         // On iOS ModuleDir resolves to App.app/Frameworks/, so this becomes
         // App.app/Frameworks/libMoltenVK.dylib.
         "libMoltenVK.dylib", "libvulkan.dylib", "libvulkan.1.dylib",
+        // Release form: MoltenVK as a framework (App Store compliant, no bare
+        // .dylibs). Resolves to App.app/Frameworks/MoltenVK.framework/MoltenVK.
+        "MoltenVK.framework/MoltenVK", "vulkan.framework/vulkan",
         // Fallback paths for static macOS builds where the Vulkan loader is bundled
         // in the "Libraries/" subdirectory but the host module (containing ANGLE)
         // is in the parent directory.

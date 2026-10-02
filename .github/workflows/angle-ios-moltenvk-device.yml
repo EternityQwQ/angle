@@ -86,6 +86,11 @@ jobs:
           ls -lh out/ios-device/*.framework
           lipo -info out/ios-device/libEGL.framework/libEGL
           lipo -info out/ios-device/libGLESv2.framework/libGLESv2
+          # A2/A6 smoke: desktop-GL shims for tinygl4angle must be exported,
+          # and the MoltenVK loader names must be referenced.
+          nm -g out/ios-device/libGLESv2.framework/libGLESv2 | grep -E " T _GL_DrawBuffer$"
+          nm -g out/ios-device/libGLESv2.framework/libGLESv2 | grep -E " T _GL_PolygonMode$"
+          strings out/ios-device/libGLESv2.framework/libGLESv2 | grep -E "^(libMoltenVK.dylib|MoltenVK.framework/MoltenVK)$"
 
       - name: Package frameworks
         run: |
