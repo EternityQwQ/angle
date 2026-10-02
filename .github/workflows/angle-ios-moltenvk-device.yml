@@ -9,11 +9,6 @@ on:
       - 'src/libANGLE/renderer/vulkan/**'
       - '.github/workflows/angle-ios-moltenvk-device.yml'
   workflow_dispatch:
-    inputs:
-      moltenvk_tag:
-        description: 'MoltenVK release tag'
-        default: 'v1.3.0'
-        required: false
 
 jobs:
   build-ios-device:
@@ -92,36 +87,16 @@ jobs:
           lipo -info out/ios-device/libEGL.framework/libEGL
           lipo -info out/ios-device/libGLESv2.framework/libGLESv2
 
-      - name: Fetch MoltenVK xcframework
-        run: |
-          TAG="${{ inputs.moltenvk_tag }}"
-          if [ -z "$TAG" ]; then TAG="v1.3.0"; fi
-          echo "MoltenVK tag=$TAG"
-          curl -L -o mvk.tar "https://github.com/KhronosGroup/MoltenVK/releases/download/${TAG}/MoltenVK.xcframework.tar"
-          tar xf mvk.tar
-          ls -R MoltenVK.xcframework | head -n 30
-
       - name: Package frameworks
         run: |
           rm -rf package/device && mkdir -p package/device
           cp -R out/ios-device/libEGL.framework package/device/
           cp -R out/ios-device/libGLESv2.framework package/device/
-          # Extract iOS device MoltenVK.framework from xcframework (ios-arm64 slice)
-          ls MoltenVK.xcframework/
-          if [ -d "MoltenVK.xcframework/ios-arm64/MoltenVK.framework" ]; then
-            cp -R MoltenVK.xcframework/ios-arm64/MoltenVK.framework package/device/
-          else
-            MVK_FW=$(find MoltenVK.xcframework -maxdepth 2 -type d -name "MoltenVK.framework" | grep -v -i simulator | head -n 1)
-            echo "fallback MoltenVK slice: $MVK_FW"
-            test -n "$MVK_FW"
-            cp -R "$MVK_FW" package/device/
-          fi
           mkdir -p package/include
           cp -R include/EGL include/GLES2 include/GLES3 include/KHR package/include/
           ls -lh package/device/
           lipo -info package/device/libEGL.framework/libEGL
           lipo -info package/device/libGLESv2.framework/libGLESv2
-          lipo -info package/device/MoltenVK.framework/MoltenVK
 
       - uses: actions/upload-artifact@v4
         with:
@@ -129,5 +104,4 @@ jobs:
           path: |
             package/device/libEGL.framework
             package/device/libGLESv2.framework
-            package/device/MoltenVK.framework
             package/include/
