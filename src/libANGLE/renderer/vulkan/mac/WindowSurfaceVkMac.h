@@ -12,7 +12,14 @@
 
 #include "libANGLE/renderer/vulkan/SurfaceVk.h"
 
-#include <Cocoa/Cocoa.h>
+// MoltenVK-only iOS device build: Cocoa is macOS-only; Metal/CAMetalLayer
+// headers cover both platforms.
+#if TARGET_OS_OSX
+#    include <Cocoa/Cocoa.h>
+#else
+#    include <Metal/Metal.h>
+#    include <QuartzCore/CAMetalLayer.h>
+#endif
 
 namespace rx
 {
