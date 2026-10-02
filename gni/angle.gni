@@ -237,7 +237,7 @@ declare_args() {
       ((is_win && !angle_is_winuwp) ||
        ((is_linux || is_chromeos) &&
         (angle_use_x11 || angle_use_wayland || angle_use_vulkan_display)) ||
-       is_android || is_fuchsia || is_mac)
+       is_android || is_fuchsia || is_mac || is_ios)
 
   # When set to true, ANGLE will not use VK_KHR_surface and VK_KHR_swapchain
   # extensions. Content can be rendered only off-screen.
@@ -247,7 +247,9 @@ declare_args() {
   angle_enable_null = !is_official_build
   angle_enable_gl_desktop_backend = !is_android && !is_ios
 
-  angle_enable_metal = is_apple
+  # Metal backend disabled for MoltenVK-only iOS device build
+  # angle_enable_metal = is_apple
+  angle_enable_metal = false
 
   # Enables the OpenCL pass-through back end
   angle_enable_cl_passthrough = angle_enable_cl
