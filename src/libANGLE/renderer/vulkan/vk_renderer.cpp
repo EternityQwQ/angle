@@ -5419,13 +5419,14 @@ gl::Version Renderer::getMaxSupportedESVersion() const
     }
 
 #if defined(ANGLE_PLATFORM_APPLE)
-    // MoltenVK-only iOS device build policy: never downgrade below ES 3.0.
-    // A 0.0 version still means "unusable device" and is preserved; any 2.x
-    // fallback (current or future gates) is raised to 3.0 so callers never
-    // silently get an ES 2.0 context on Apple hardware.
-    if (maxVersion >= gl::Version(2, 0) && maxVersion < gl::Version(3, 0))
+    // MoltenVK-only iOS device build policy: pin to ES 3.1, refuse all
+    // downgrades. A 0.0 version still means "unusable device" and is preserved;
+    // everything else reports 3.1 so callers never silently get a lower
+    // context on Apple hardware. (Known non-conformant corner: flat shading
+    // without VK_EXT_provoking_vertex, see above.)
+    if (maxVersion >= gl::Version(2, 0))
     {
-        maxVersion = gl::Version(3, 0);
+        return gl::Version(3, 1);
     }
 #endif
 
