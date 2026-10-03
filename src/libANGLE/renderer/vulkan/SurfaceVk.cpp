@@ -10,6 +10,8 @@
 #include "libANGLE/renderer/vulkan/SurfaceVk.h"
 #include "common/unsafe_buffers.h"
 
+#include <cstdio>
+
 #include "common/debug.h"
 #include "libANGLE/Context.h"
 #include "libANGLE/Display.h"
@@ -2861,6 +2863,22 @@ angle::Result WindowSurfaceVk::present(ContextVk *contextVk,
 
     VkResult presentResult =
         renderer->queuePresent(contextVk, contextVk->getPriority(), presentInfo);
+
+#if defined(ANGLE_PLATFORM_APPLE)
+    // MoltenVK-ANGLE 黑屏取证（诊断补丁）：逐 present 记录 image 索引/结果/尺寸。
+    // stderr 必进设备日志；节流（前 3 次 + 每 300 次），行为零改动。
+    {
+        static uint64_t s_presentLogCount = 0;
+        if (++s_presentLogCount <= 3 || s_presentLogCount % 300 == 0)
+        {
+            fprintf(stderr,
+                    "[ANGLE-VK] present #%llu img=%u/%zu result=%d surface=%dx%d\n",
+                    (unsigned long long)s_presentLogCount, mCurrentSwapchainImageIndex,
+                    mSwapchainImages.size(), static_cast<int>(presentResult), mWidth,
+                    mHeight);
+        }
+    }
+#endif
 
     // EGL_EXT_buffer_age
     // 4) What is the buffer age of a single buffered surface?
