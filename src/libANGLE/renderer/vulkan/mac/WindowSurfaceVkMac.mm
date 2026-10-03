@@ -45,6 +45,12 @@ angle::Result WindowSurfaceVkMac::createSurfaceVk(vk::ErrorContext *context)
 #if TARGET_OS_OSX
     // autoresizingMask is macOS-only; iOS layers are resized by UIKit.
     mMetalLayer.autoresizingMask = kCALayerWidthSizable | kCALayerHeightSizable;
+#else
+    // MoltenVK-only iOS device build: presents must NOT wait for CATransactions.
+    // Rendering happens on threads without a runloop, so implicit transactions
+    // never commit and presented drawables would never reach the screen
+    // (successful swaps, black display). Matches the host layer config.
+    mMetalLayer.presentsWithTransaction = NO;
 #endif
     mMetalLayer.contentsScale = layer.contentsScale;
 
