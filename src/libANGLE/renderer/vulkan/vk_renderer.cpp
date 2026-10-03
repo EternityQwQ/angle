@@ -6471,12 +6471,17 @@ void Renderer::initFeatures(const vk::ExtensionNameList &deviceExtensionNames,
     //
     // Use of vertexInputDynamicState on PowerVR devices is disabled for performance reasons
     // (http://issuetracker.google.com/469320616).
+    // MoltenVK-only iOS device build: VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE
+    // is OS-gated in MoltenVK (needs iOS/tvOS 17.0+, macOS 14.0+); below that every
+    // pipeline creation logs VK_ERROR_FEATURE_NOT_PRESENT and yields broken
+    // pipelines (black frames, then SIGSEGV; test fleet caps at iOS 16). Force the
+    // static vertex-input paths, which are fully implemented on both branches.
     ANGLE_FEATURE_CONDITION(
         &mFeatures, supportsVertexInputDynamicState,
         mVertexInputDynamicStateFeatures.vertexInputDynamicState == VK_TRUE &&
             !(IsWindows() && isIntel) &&
             !(isARMProprietary && driverVersion < angle::VersionTriple(48, 0, 0)) &&
-            !isQualcommProprietary && !isPowerVR);
+            !isQualcommProprietary && !isPowerVR && !IsApple());
 
     ANGLE_FEATURE_CONDITION(&mFeatures, supportsExtendedDynamicState,
                             mExtendedDynamicStateFeatures.extendedDynamicState == VK_TRUE &&
@@ -6498,7 +6503,8 @@ void Renderer::initFeatures(const vk::ExtensionNameList &deviceExtensionNames,
     ANGLE_FEATURE_CONDITION(&mFeatures, useVertexInputBindingStrideDynamicState,
                             mFeatures.supportsExtendedDynamicState.enabled &&
                                 !mFeatures.supportsVertexInputDynamicState.enabled &&
-                                !isVertexInputBindingStrideBuggy);
+                                !isVertexInputBindingStrideBuggy &&
+                                !IsApple());  // Same MoltenVK OS gate as above.
     // On ARM proprietary drivers prior to r52, |vkCmdSetCullMode| incorrectly culls non-triangle
     // topologies, according to the errata:
     // https://developer.arm.com/documentation/SDEN-3735689/0100/?lang=en
