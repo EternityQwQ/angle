@@ -38,6 +38,10 @@ angle::Result WindowSurfaceVkMac::createSurfaceVk(vk::ErrorContext *context)
     mMetalLayer        = [[CAMetalLayer alloc] init];
     mMetalLayer.frame  = CGRectMake(0, 0, layer.frame.size.width, layer.frame.size.height);
     mMetalLayer.device = mMetalDevice;
+    // Contents scale must be set BEFORE deriving drawableSize: a fresh layer
+    // defaults to 1.0, which would size the initial swapchain at 1x and force
+    // a wasteful recreate on first resize (same order as SurfaceMtl).
+    mMetalLayer.contentsScale = layer.contentsScale;
     mMetalLayer.drawableSize =
         CGSizeMake(mMetalLayer.bounds.size.width * mMetalLayer.contentsScale,
                    mMetalLayer.bounds.size.height * mMetalLayer.contentsScale);
@@ -52,7 +56,6 @@ angle::Result WindowSurfaceVkMac::createSurfaceVk(vk::ErrorContext *context)
     // (successful swaps, black display). Matches the host layer config.
     mMetalLayer.presentsWithTransaction = NO;
 #endif
-    mMetalLayer.contentsScale = layer.contentsScale;
 
     [layer addSublayer:mMetalLayer];
 
