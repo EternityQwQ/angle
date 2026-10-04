@@ -38,6 +38,9 @@ class WindowSurfaceVkMac : public WindowSurfaceVk
 
     CAMetalLayer *mMetalLayer;
     id<MTLDevice> mMetalDevice;
+    // True when mMetalLayer was created here (vs. reusing the host layer);
+    // only owned layers are resized and released by us.
+    bool mOwnsMetalLayer = false;
 };
 
 }  // namespace rx

@@ -26,7 +26,15 @@ WindowSurfaceVkMac::WindowSurfaceVkMac(const egl::SurfaceState &surfaceState,
 WindowSurfaceVkMac::~WindowSurfaceVkMac()
 {
     [mMetalDevice release];
-    [mMetalLayer release];
+    // Only release what we created; the host layer belongs to the view hierarchy.
+    // Owned children are also detached so stale layers never linger on screen.
+    if (mOwnsMetalLayer)
+    {
+        [mMetalLayer removeFromSuperlayer];
+        [mMetalLayer release];
+        mMetalLayer     = nullptr;
+        mOwnsMetalLayer = false;
+    }
 }
 
 angle::Result WindowSurfaceVkMac::createSurfaceVk(vk::ErrorContext *context)
@@ -35,29 +43,38 @@ angle::Result WindowSurfaceVkMac::createSurfaceVk(vk::ErrorContext *context)
 
     CALayer *layer = reinterpret_cast<CALayer *>(mNativeWindowType);
 
-    mMetalLayer        = [[CAMetalLayer alloc] init];
-    mMetalLayer.frame  = CGRectMake(0, 0, layer.frame.size.width, layer.frame.size.height);
+    // Mirror SurfaceMtl: when the host already is a CAMetalLayer, render into
+    // it directly instead of stacking our own child (same compositor path as
+    // the working Metal backend; no mounting/ownership questions at all).
+    // Contents scale is set BEFORE deriving drawableSize: a fresh layer
+    // defaults to 1.0, which would size the initial swapchain at 1x.
+    if ([layer isKindOfClass:[CAMetalLayer class]])
+    {
+        mMetalLayer     = (CAMetalLayer *)layer;
+        mOwnsMetalLayer = false;
+    }
+    else
+    {
+        mMetalLayer        = [[CAMetalLayer alloc] init];
+        mMetalLayer.frame  = CGRectMake(0, 0, layer.frame.size.width, layer.frame.size.height);
+        mMetalLayer.contentsScale = layer.contentsScale;
+#if TARGET_OS_OSX
+        // autoresizingMask is macOS-only; iOS layers are resized by UIKit.
+        mMetalLayer.autoresizingMask = kCALayerWidthSizable | kCALayerHeightSizable;
+#else
+        // MoltenVK-only iOS device build: our own child layer must not wait for
+        // CATransactions (render threads have no runloop, so presented drawables
+        // would never reach the screen despite successful swaps).
+        mMetalLayer.presentsWithTransaction = NO;
+#endif
+        mOwnsMetalLayer = true;
+        [layer addSublayer:mMetalLayer];
+    }
     mMetalLayer.device = mMetalDevice;
-    // Contents scale must be set BEFORE deriving drawableSize: a fresh layer
-    // defaults to 1.0, which would size the initial swapchain at 1x and force
-    // a wasteful recreate on first resize (same order as SurfaceMtl).
-    mMetalLayer.contentsScale = layer.contentsScale;
     mMetalLayer.drawableSize =
         CGSizeMake(mMetalLayer.bounds.size.width * mMetalLayer.contentsScale,
                    mMetalLayer.bounds.size.height * mMetalLayer.contentsScale);
     mMetalLayer.framebufferOnly = NO;
-#if TARGET_OS_OSX
-    // autoresizingMask is macOS-only; iOS layers are resized by UIKit.
-    mMetalLayer.autoresizingMask = kCALayerWidthSizable | kCALayerHeightSizable;
-#else
-    // MoltenVK-only iOS device build: presents must NOT wait for CATransactions.
-    // Rendering happens on threads without a runloop, so implicit transactions
-    // never commit and presented drawables would never reach the screen
-    // (successful swaps, black display). Matches the host layer config.
-    mMetalLayer.presentsWithTransaction = NO;
-#endif
-
-    [layer addSublayer:mMetalLayer];
 
     VkMetalSurfaceCreateInfoEXT createInfo = {};
     createInfo.sType                       = VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT;
@@ -76,11 +93,14 @@ angle::Result WindowSurfaceVkMac::getCurrentWindowSize(vk::ErrorContext *context
     ANGLE_VK_CHECK(context, (mMetalLayer != nullptr), VK_ERROR_INITIALIZATION_FAILED);
 
 #if !TARGET_OS_OSX
-    // Manual autoresizing follow (iOS has no kCALayerWidthSizable): keep the
-    // Metal layer sized to its host layer before measuring.
-    CALayer *hostLayer = reinterpret_cast<CALayer *>(mNativeWindowType);
-    mMetalLayer.frame =
-        CGRectMake(0, 0, hostLayer.bounds.size.width, hostLayer.bounds.size.height);
+    // Manual autoresizing follow (iOS has no kCALayerWidthSizable), owned child
+    // layers only: never fight UIKit over a reused host layer's frame.
+    if (mOwnsMetalLayer)
+    {
+        CALayer *hostLayer = reinterpret_cast<CALayer *>(mNativeWindowType);
+        mMetalLayer.frame =
+            CGRectMake(0, 0, hostLayer.bounds.size.width, hostLayer.bounds.size.height);
+    }
 #endif
 
     mMetalLayer.drawableSize =
