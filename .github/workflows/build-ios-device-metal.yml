@@ -1,0 +1,62 @@
+# 构建适用于 iOS 真机的 Metal 后端 ANGLE .framework
+#
+# 用法: GitHub 网页 -> Actions -> 本 workflow -> Run workflow,
+# 构建完成后在 Artifacts 里下载 libEGL.framework / libGLESv2.framework。
+#
+# 注意: iOS 构建只能在 macOS runner (GitHub 提供的 macos 云主机) 上跑,
+# 这是 Xcode/iOS SDK 的限制,改不了。
+
+name: Build ANGLE iOS Device (Metal)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    timeout-minutes: 180
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup depot_tools
+        run: |
+          git clone --depth 1 https://chromium.googlesource.com/chromium/tools/depot_tools.git "$RUNNER_TEMP/depot_tools"
+          echo "$RUNNER_TEMP/depot_tools" >> "$GITHUB_PATH"
+
+      - name: Sync dependencies
+        run: |
+          python3 scripts/bootstrap.py
+          gclient sync --no-history --noprehooks
+
+      - name: GN gen (iOS device / arm64 / Metal)
+        run: |
+          mkdir -p out/ios-device
+          cat > out/ios-device/args.gn <<'EOF'
+          target_os = "ios"
+          target_cpu = "arm64"
+          target_environment = "device"
+          ios_deployment_target = "15.0"
+          ios_enable_code_signing = false
+          is_debug = false
+          is_component_build = false
+          symbol_level = 0
+          angle_enable_metal = true
+          angle_enable_vulkan = false
+          angle_enable_gl = false
+          angle_enable_null = false
+          angle_enable_wgpu = false
+          angle_build_tests = false
+          EOF
+          gn gen out/ios-device
+
+      - name: Build frameworks
+        run: autoninja -C out/ios-device libEGL libGLESv2
+
+      - name: Upload frameworks
+        uses: actions/upload-artifact@v4
+        with:
+          name: ANGLE-iOS-device-frameworks
+          path: out/ios-device/*.framework
